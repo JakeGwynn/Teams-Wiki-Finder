@@ -95,6 +95,8 @@ function InstallModules ($modules) {
     }
 }
 
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
 $preReqModules =  "PnP.PowerShell", "ExchangeOnlineManagement"
 
 # Install required PS Modules
