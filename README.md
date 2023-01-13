@@ -14,7 +14,7 @@ Register-PnPAzureADApp -ApplicationName "Teams Wiki Finder" -Interactive `
 -Tenant <contoso>.onmicrosoft.com -Store CurrentUser -Username "GlobalAdmin@contoso.com" `
 -Password (Read-Host -AsSecureString -Prompt "Enter Password") -SharePointApplicationPermissions "Sites.Read.All"
   ```
-**Note the "AzureAppId/ClientId" and "Certificate Thumbprint". These values will be used as parameters when running the Get-AllTeamsWiki.ps1 script**
+**Note the "AzureAppId/ClientId" and "Certificate Thumbprint" from the output of the Register-PnPAzureADApp cmdlet. These values will be used as parameters when running the Get-AllTeamsWiki.ps1 script**
 
 ## Running the Script
 1. Download the **Get-AllTeamsWikis.ps1** script to the machine where Register-PnPAzureADApp was run.
