@@ -111,35 +111,48 @@ foreach ($module in $preReqModules) {
 }
 Write-Host "Installed modules" -ForegroundColor Green
 
-Write-Host "Authenticate to Exchange Online with an account that has an Exchange Online Administrator role" -ForegroundColor Yellow
+Write-Host "Authenticate to Exchange Online with an account that has an Exchange Online Administrator role `r`n" -ForegroundColor Yellow
 Connect-ExchangeOnline -ShowBanner:$False
 
+Write-Host "Retrieving M365 Groups attached to a MS Team `r`n" -ForegroundColor Yellow
 $AllGroups = Get-UnifiedGroup -Filter {ResourceProvisioningOptions -eq "Team"}
 [System.Collections.Generic.List[object]]$AllWikiFiles = @()
 
+Write-Host "Getting Wiki metadata for all MS Teams `r`n" -ForegroundColor Yellow
 foreach ($Group in $AllGroups) {
     $WikiModifiedSinceCreation = $false
     $DocLibItems = $null
-    Connect-PnPOnline -ClientId $AppId -Thumbprint $CertThumbprint -Url $Group.SharePointSiteUrl -Tenant $TenantName -WarningAction Silently
-    $WikiDocLib = Get-PnPList -Identity "Teams Wiki Data"
-    if ($WikiDocLib) {
-        $DocLibItems = (Get-PnPListItem -List "Teams Wiki Data").FieldValues
-        foreach ($File in $DocLibItems) {
-            if ($File.File_x0020_Type -eq "mht"){
-                if ($File.Created -le ($File.Modified).AddSeconds(-5)) {
-                    $WikiModifiedSinceCreation = $true
+    Write-Host "Team Name: $($Group.DisplayName)"
+    try {
+        if ($null -ne $Group.SharePointSiteUrl) {
+            Connect-PnPOnline -ClientId $AppId -Thumbprint $CertThumbprint -Url $Group.SharePointSiteUrl -Tenant $TenantName -WarningAction Silently
+            $WikiDocLib = Get-PnPList -Identity "Teams Wiki Data"
+            if ($WikiDocLib) {
+                $DocLibItems = (Get-PnPListItem -List "Teams Wiki Data").FieldValues
+                foreach ($File in $DocLibItems) {
+                    if ($File.File_x0020_Type -eq "mht"){
+                        if ($File.Created -le ($File.Modified).AddSeconds(-30)) {
+                            $WikiModifiedSinceCreation = $true
+                        }
+                        $AllWikiFiles.Add([pscustomobject]@{
+                            WikiFileName = $File.FileLeafRef
+                            SharePointSiteUrl = $Group.SharePointSiteUrl
+                            FileSize = (DisplayInBytes $File.SMTotalFileStreamSize)
+                            CreatedDate = $File.Created
+                            ModifiedDate = $File.Modified
+                            Channel = ($File.FileDirRef -split "Teams Wiki Data")[1].Trim("/")
+                            ModifiedSinceCreation = $WikiModifiedSinceCreation
+                        })
+                    }
                 }
-                $AllWikiFiles.Add([pscustomobject]@{
-                    WikiFileName = $File.FileLeafRef
-                    SharePointSiteUrl = $Group.SharePointSiteUrl
-                    FileSize = (DisplayInBytes $File.SMTotalFileStreamSize)
-                    CreatedDate = $File.Created
-                    ModifiedDate = $File.Modified
-                    Channel = ($File.FileDirRef -split "Teams Wiki Data")[1].Trim("/")
-                    ModifiedSinceCreation = $WikiModifiedSinceCreation
-                })
             }
+            Write-Host "`r`n"
         }
+    }
+    catch {
+        Write-Host "Error getting metadata for this group `r`n" -ForegroundColor Red
     }
 }
 $AllWikiFiles | Export-Csv -Path (New-Item -Path $CsvExportPath -Force) -NoTypeInformation
+
+Disconnect-ExchangeOnline -Confirm:$false
