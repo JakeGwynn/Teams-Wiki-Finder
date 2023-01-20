@@ -115,7 +115,7 @@ Write-Host "Authenticate to Exchange Online with an account that has an Exchange
 Connect-ExchangeOnline -ShowBanner:$False
 
 Write-Host "Retrieving M365 Groups attached to a MS Team `r`n" -ForegroundColor Yellow
-$AllGroups = Get-UnifiedGroup -Filter {ResourceProvisioningOptions -eq "Team"}
+$AllGroups = Get-UnifiedGroup -Filter {ResourceProvisioningOptions -eq "Team"} -ResultSize Unlimited
 [System.Collections.Generic.List[object]]$AllWikiFiles = @()
 
 Write-Host "Getting Wiki metadata for all MS Teams `r`n" -ForegroundColor Yellow
@@ -128,7 +128,7 @@ foreach ($Group in $AllGroups) {
             Connect-PnPOnline -ClientId $AppId -Thumbprint $CertThumbprint -Url $Group.SharePointSiteUrl -Tenant $TenantName -WarningAction Silently
             $WikiDocLib = Get-PnPList -Identity "Teams Wiki Data"
             if ($WikiDocLib) {
-                $DocLibItems = (Get-PnPListItem -List "Teams Wiki Data").FieldValues
+                $DocLibItems = (Get-PnPListItem -List "Teams Wiki Data"  -PageSize 5000).FieldValues
                 foreach ($File in $DocLibItems) {
                     if ($File.File_x0020_Type -eq "mht"){
                         if ($File.Created -le ($File.Modified).AddSeconds(-30)) {
