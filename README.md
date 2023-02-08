@@ -18,10 +18,20 @@ Register-PnPAzureADApp -ApplicationName "Teams Wiki Finder" -Interactive `
 
 ## Running the Script
 1. Download the **Get-AllTeamsWikis.ps1** script to the machine where Register-PnPAzureADApp was run.
-2. In a PowerShell windows, navigate to the folder where the Get-AllTeamsWikis.ps1 script is located.
-3. Run the following command within the PowerShell windows, which will run the script. Replace the AppId and CertThumbprint parameters with the values output from the Register-PnPAzureADApp command. Replace the TenantName parameter with your tenant's xxx.onmicrosoft.com domain name. Finally, replace the CsvExportPath parameter with the location and file name of the CSV that will contain all of the Wiki metadata. If the folder does not already exist, it will be created.
+2. In a PowerShell window, navigate to the folder where the Get-AllTeamsWikis.ps1 script is located.
+3. Run the one of the following commands within the PowerShell window, which will run the script. Replace the -AppId and -CertThumbprint parameters with the values output from the Register-PnPAzureADApp command. Replace the -TenantName parameter with your tenant's xxx.onmicrosoft.com domain name. Finally, replace the -CsvExportPath parameter with the location and file name of the CSV that will contain all of the Wiki metadata. If the folder does not already exist, it will be created.
+4. If you would prefer to supply a list of Groups/Teams to check for the presence of a Wiki, use the -GroupsCsvPath Parameter to import a CSV file. The CSV **must** have a **SharePointSiteUrl** and **DisplayName** column. 
+
+#### Pull list of all M365 Groups from Exchange Online that have an associated Team. 
 
   ```powershell
 .\Get-AllTeamsWikis.ps1 -AppId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -CertThumbprint "161C9622BAEFE47C50EFB305FD6805A95D37579E" `
 -TenantName "contoso.onmicrosoft.com" -CsvExportPath "C:\Temp\WikiFilesInTeams.csv"
+  ```
+  
+#### Supply a CSV file with a list of M365 Groups with an associated Team.
+    
+  ```powershell
+.\Get-AllTeamsWikis.ps1 -AppId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -CertThumbprint "161C9622BAEFE47C50EFB305FD6805A95D37579E" `
+-TenantName "contoso.onmicrosoft.com" -CsvExportPath "C:\Temp\WikiFilesInTeams.csv" -GroupsCsvPath C:\temp\GroupsToAssess.csv
   ```
