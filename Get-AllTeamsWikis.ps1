@@ -29,6 +29,9 @@ This can be used to evaluate how many Wiki pages need to moved to OneNote.
 .EXAMPLE
 .\Get-AllTeamsWikis.ps1 -AppId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -CertThumbprint "161C9622BAEFE47C50EFB305FD6805A95D37579E" `
 -TenantName "contoso.onmicrosoft.com" -CsvExportPath "C:\Temp\WikiFilesInTeams.csv"
+
+.\Get-AllTeamsWikis.ps1 -AppId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -CertThumbprint "161C9622BAEFE47C50EFB305FD6805A95D37579E" `
+-TenantName "contoso.onmicrosoft.com" -CsvExportPath "C:\Temp\WikiFilesInTeams.csv" -GroupsCsvPath "C:\Temp\GroupsToAssess.csv"
 #>
 
 Param(
@@ -42,7 +45,10 @@ Param(
    [string]$TenantName,
 
    [Parameter(Mandatory=$false)]
-   [string]$CsvExportPath = "C:\Temp\WikiFilesInTeams.csv"
+   [string]$CsvExportPath = "C:\Temp\WikiFilesInTeams.csv",
+
+   [Parameter(Mandatory=$false)]
+   [string]$GroupsCsvPath
 )
 
 function DisplayInBytes($num) 
@@ -97,7 +103,12 @@ function InstallModules ($modules) {
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
-$preReqModules =  "PnP.PowerShell", "ExchangeOnlineManagement"
+If($GroupsCsvPath) {
+    $preReqModules =  "PnP.PowerShell"
+}
+else {
+    $preReqModules =  "PnP.PowerShell", "ExchangeOnlineManagement"
+}
 
 # Install required PS Modules
 Write-Host "Installing required PowerShell Modules..." -ForegroundColor Yellow
@@ -111,11 +122,18 @@ foreach ($module in $preReqModules) {
 }
 Write-Host "Installed modules" -ForegroundColor Green
 
-Write-Host "Authenticate to Exchange Online with an account that has an Exchange Online Administrator role `r`n" -ForegroundColor Yellow
-Connect-ExchangeOnline -ShowBanner:$False
+If($GroupsCsvPath) {
+    Write-Host "Importing CSV file with list of groups/Teams to check for Wikis `r`n" -ForegroundColor Yellow
+    $AllGroups = Import-Csv -Path $GroupsCsvPath
+}
+else {
+    Write-Host "Authenticate to Exchange Online with an account that has an Exchange Online Administrator role `r`n" -ForegroundColor Yellow
+    Connect-ExchangeOnline -ShowBanner:$False
 
-Write-Host "Retrieving M365 Groups attached to a MS Team `r`n" -ForegroundColor Yellow
-$AllGroups = Get-UnifiedGroup -Filter {ResourceProvisioningOptions -eq "Team"} -ResultSize Unlimited
+    Write-Host "Retrieving M365 Groups attached to a MS Team `r`n" -ForegroundColor Yellow
+    $AllGroups = Get-UnifiedGroup -Filter {ResourceProvisioningOptions -eq "Team"} -ResultSize Unlimited
+}
+
 [System.Collections.Generic.List[object]]$AllWikiFiles = @()
 
 Write-Host "Getting Wiki metadata for all MS Teams `r`n" -ForegroundColor Yellow
@@ -135,8 +153,9 @@ foreach ($Group in $AllGroups) {
                             $WikiModifiedSinceCreation = $true
                         }
                         $AllWikiFiles.Add([pscustomobject]@{
-                            WikiFileName = $File.FileLeafRef
+                            GroupDisplayName = $Group.DisplayName
                             SharePointSiteUrl = $Group.SharePointSiteUrl
+                            WikiFileName = $File.FileLeafRef
                             FileSize = (DisplayInBytes $File.SMTotalFileStreamSize)
                             CreatedDate = $File.Created
                             ModifiedDate = $File.Modified
@@ -147,10 +166,12 @@ foreach ($Group in $AllGroups) {
                 }
             }
             Write-Host "`r`n"
+            Disconnect-PnPOnline
         }
     }
     catch {
         Write-Host "Error getting metadata for this group `r`n" -ForegroundColor Red
+        $_
     }
 }
 $AllWikiFiles | Export-Csv -Path (New-Item -Path $CsvExportPath -Force) -NoTypeInformation
